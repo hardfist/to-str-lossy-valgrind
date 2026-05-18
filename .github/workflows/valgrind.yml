@@ -1,0 +1,60 @@
+name: Valgrind comparison
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: Callgrind iterations per case
+        required: false
+        default: "100"
+
+jobs:
+  callgrind:
+    name: Compare Ir with Callgrind
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Valgrind
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y valgrind
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Test
+        run: cargo test
+
+      - name: Run Callgrind comparison
+        env:
+          ITERATIONS: ${{ github.event.inputs.iterations || '100' }}
+        run: scripts/run_callgrind.sh "${ITERATIONS}"
+
+      - name: Write comparison summary
+        run: |
+          latest_dir="$(find optimization-artifacts/valgrind/callgrind -mindepth 1 -maxdepth 1 -type d | sort | tail -n 1)"
+          {
+            echo "## Valgrind Callgrind comparison"
+            echo
+            echo "- Metric: \`Ir\` instruction references"
+            echo "- Iterations: \`${{ github.event.inputs.iterations || '100' }}\`"
+            echo "- Artifact directory: \`${latest_dir}\`"
+            echo
+            scripts/compare_ir.sh "${latest_dir}/summary.tsv"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload Valgrind artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: valgrind-callgrind-results
+          path: optimization-artifacts/valgrind/callgrind/

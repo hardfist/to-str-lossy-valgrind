@@ -55,3 +55,13 @@ valgrind --tool=callgrind ./target/release/to-str-lossy-valgrind lossy-invalid 1
 ```
 
 Use Callgrind `Ir` as the primary metric. Lower is better.
+
+## CI
+
+GitHub Actions runs the same Callgrind comparison on pushes, pull requests, and manual dispatches:
+
+```text
+.github/workflows/valgrind.yml
+```
+
+The workflow installs Valgrind, runs `scripts/run_callgrind.sh`, writes a Markdown comparison table to the job summary, and uploads the raw Callgrind outputs as an artifact.
